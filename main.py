@@ -85,7 +85,7 @@ def get_agriculture_by_category(category: str):
     results = [item for item in agricola_list if category.lower() in item['category'].lower()]
     if results:
         return JSONResponse(content=results)
-    raise HTTPException(status_code=404, detail="Categoría no encontrada") 
+    raise HTTPException(status_code=404, detail="Categoría no encontrada")
 
 
 
