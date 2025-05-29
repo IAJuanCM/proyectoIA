@@ -1,13 +1,15 @@
+
 """
 Imagina que esta API es una biblioteca de información agrícola:
-La función load_agriculture() es como bibliotecario que carga el catálogo de libros (agrícola) cuando se abre la biblioteca.
-La función get_agriculture() muestra todo el catálogo cuando alguien lo pide.
-La función get_agricultural(id) es como si alguien preguntara por un libro específico por su código de identificación.
-La función chatbot(query) es un asistente que busca libros según palabras clave y sinónimos.
-La función get_agriculture_by_category(category) ayuda a encontrar libros según su categoría.
+La función load_agriculture() es como bibliotecario que carga el catalogo de libros (agrícola) cuando se abre la  biblioteca.
+La función get_agriculture() muestra todo el catalogo cuando alguien lo pide.
+La función get_agricultural(id) es como si alguien preguntara por un libro específico por su codigo de identificación.
+La función chatbot (query) es un asistente que busca libros según palabras clave y sinónimo.
+La función get_agriculture_by_category (cagory) ayuda a encontrar libros según su género (agricultura intensiva, agricultura extensiva, agricultura ecológica etc.).
 """
 
-# Importamos las herramientas necesarias para construir nuestra API
+
+# API corregida y funcional con datasets reales
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 import pandas as pd
@@ -15,53 +17,65 @@ import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import wordnet
 
-# Asegurar que los datos NLTK están descargados
-nltk.download('punkt')  # Paquete para dividir frases en palabras.
-nltk.download('wordnet')  # Paquete para encontrar sinónimos de palabras en inglés.
+# Descargar recursos necesarios de NLTK
+nltk.download('punkt')
+nltk.download('wordnet')
 
-# Indicamos la ruta donde NLTK buscará los datos descargados en nuestro computador
-nltk.data.path.append(r'C:\Users\VanessaGR\AppData\Roaming\nltk_data')
-
-# Función para cargar la información agrícola desde archivos CSV
+# Cargar y unir los datos
 def load_agriculture():
     try:
-        df1 = pd.read_csv("Dataset/farmer_advisor_dataset.csv")[['Sustainable_id', 'title', 'release_year', 'listed_in', 'description']]
-        df2 = pd.read_csv("Dataset/market_researcher_dataset.csv")[['Sustainable_id', 'title', 'release_year', 'listed_in', 'description']]
+        # Dataset 1: Farmers
+        df1 = pd.read_csv("Dataset/farmer_advisor_dataset.csv")
+        df1 = df1[['Farm_ID', 'Crop_Type', 'Crop_Yield_ton', 'Sustainability_Score']]
+        df1['title'] = 'Farmer Data'
+        df1['overview'] = 'Yield: ' + df1['Crop_Yield_ton'].astype(str) + ", Sustainability: " + df1['Sustainability_Score'].astype(str)
+        df1 = df1.rename(columns={
+            'Farm_ID': 'id',
+            'Crop_Type': 'category'
+        })
+        df1 = df1[['id', 'title', 'category', 'overview']]
+
+        # Dataset 2: Market
+        df2 = pd.read_csv("Dataset/market_researcher_dataset.csv")
+        df2 = df2[['Market_ID', 'Product', 'Market_Price_per_ton', 'Economic_Indicator']]
+        df2['title'] = 'Market Data'
+        df2['overview'] = 'Price: ' + df2['Market_Price_per_ton'].astype(str) + ", Economic Indicator: " + df2['Economic_Indicator'].astype(str)
+        df2 = df2.rename(columns={
+            'Market_ID': 'id',
+            'Product': 'category'
+        })
+        df2 = df2[['id', 'title', 'category', 'overview']]
+
         df = pd.concat([df1, df2], ignore_index=True)
-        df.columns = ['id', 'title', 'year', 'category', 'overview']
         return df.fillna('').to_dict(orient='records')
     except Exception as e:
         raise RuntimeError(f"Error cargando los datasets: {e}")
 
-# Cargamos la información al iniciar la API
+# Cargar datos al iniciar
 agricola_list = load_agriculture()
 
-# Función para obtener sinónimos de una palabra
-def get_synonyms(word): 
+# Función para obtener sinónimos
+def get_synonyms(word):
     return {lemma.name().lower() for syn in wordnet.synsets(word) for lemma in syn.lemmas()}
 
-# Inicializamos la aplicación FastAPI
-app = FastAPI(title="Mi biblioteca de información agrícola", version="1.0.0")
+# Inicializar API
+app = FastAPI(title="Biblioteca de Información Agrícola", version="1.0.0")
 
-# Ruta de inicio
 @app.get("/", tags=["Home"])
 def home():
     return HTMLResponse('<h1>Bienvenido a la API de agricultura colombiana</h1>')
 
-# Ruta para mostrar todo el catálogo agrícola
 @app.get("/agriculture", tags=["Agriculture"])
 def get_agriculture():
     return JSONResponse(content=agricola_list)
 
-# Ruta para obtener un documento por su ID
 @app.get("/agriculture/{item_id}", tags=["Agriculture"])
 def get_agricultural(item_id: str):
     for item in agricola_list:
-        if item['id'] == item_id:
+        if str(item['id']) == item_id:
             return JSONResponse(content=item)
     raise HTTPException(status_code=404, detail="Documento no encontrado")
 
-# Ruta tipo chatbot que busca documentos por palabras clave y sinónimos
 @app.get("/chatbot", tags=["Chatbot"])
 def chatbot(query: str):
     query_words = word_tokenize(query.lower())
@@ -79,14 +93,12 @@ def chatbot(query: str):
         return JSONResponse(content=results)
     raise HTTPException(status_code=404, detail="No se encontraron coincidencias")
 
-# Ruta para buscar documentos por categoría
 @app.get("/agriculture/category/{category}", tags=["Agriculture"])
 def get_agriculture_by_category(category: str):
     results = [item for item in agricola_list if category.lower() in item['category'].lower()]
     if results:
         return JSONResponse(content=results)
     raise HTTPException(status_code=404, detail="Categoría no encontrada")
-
 
 
 
