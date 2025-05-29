@@ -8,8 +8,6 @@ La función chatbot (query) es un asistente que busca libros según palabras cla
 La función get_agriculture_by_category (cagory) ayuda a encontrar libros según su género (agricultura intensiva, agricultura extensiva, agricultura ecológica etc.).
 """
 
-
-# API corregida y funcional con datasets reales
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 import pandas as pd
